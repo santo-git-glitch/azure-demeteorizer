@@ -1,4 +1,27 @@
-#!/usr/bin/env node
+var validateVersion = function(name, cmd, versions) {
+    return new Promise(function(resolve, reject) {
+        exec(cmd)
+            .catch(reject)
+            .then(function(result) {
+                logger.silly(cmd + ' -> stdout: ' + result);
 
-require('../main');
+                var matches = (result || '').match(/(\d+\.\d+\.\d+)/g);
+                var curr = matches ? matches[0] : null;
+
+                // Meteor 1.3+ often reports "Meteor 1.3" instead of "1.3.0"
+                if (!curr) {
+                    matches = (result || '').match(/(\d+\.\d+)/g);
+                    curr = matches ? matches[0] + '.0' : null;
+                }
+
+                if (curr && semver.satisfies(curr, versions)) {
+                    logger.verbose('run-precheck', name + ' has a valid version. Current version: ' + curr + ' Valid version(s): ' + versions);
+                    resolve();
+                } else {
+                    reject(name + ' has an invalid version. Current version: ' + curr + ' Valid version(s): ' + versions);
+                }
+            })
+            .then(resolve, reject);
+    });
+};
 
